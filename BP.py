@@ -7,13 +7,28 @@ from sklearn import preprocessing
 from sklearn.metrics import log_loss
 from sklearn.metrics import roc_curve,auc,precision_recall_curve,f1_score,confusion_matrix,accuracy_score
 from sklearn.model_selection import KFold,StratifiedKFold
-from DataSet.minist import Mnist
-
-LR=0.1
-BatchSize=1
+from minist import Mnist
+import cv2
 
 
+LR=0.2
+BatchSize=2
 
+
+def data_augment(x):
+    '''
+    输入x为minibatch,大小比如(64,32,32,3)
+    '''
+    for i in range(x.shape[0]):
+        temp = cv2.copyMakeBorder(x[i,:,:,:], 4, 4, 4, 4, cv2.BORDER_CONSTANT, value=0)
+        h = np.random.randint(0,8)
+        w = np.random.randint(0,8)
+        temp = temp[h:h+32,w:w+32,:]
+        random_flip = np.random.random()
+        if random_flip > 0.5:
+            temp = np.fliplr(temp)
+        x[i,:,:,:] = temp
+    return x
 
 
 def data_analyze(data,target):
@@ -57,11 +72,15 @@ class Net(object):
         return sigmoid(np.dot(input, W)),input
 
     def train(self,data,targets,lr=0.01,batch_size=1,epochs=10000):
+        Loss_his=[[],[]]
+        Acc_his = [[], []]
         for n in range(epochs+1):
             Loss=[]
             Acc=[]
             sample=list(range(len(data)))
             np.random.shuffle(sample)
+            if n>750:
+                lr=lr*0.5
             for  i in range(0,len(sample),batch_size):
                 X=data[i:i+batch_size]
                 Y=targets[i:i+batch_size]
@@ -81,7 +100,7 @@ class Net(object):
                 accuracy = np.mean(np.equal(predictions, np.argmax(Y,axis=1)))
                 Acc.append(accuracy)
 
-                Z3_delta= (L3-Y) * dsigmoid(L3)
+                Z3_delta= (Y-L3) * dsigmoid(L3)
                 # print(Z3_delta.shape)
                 Z2_delta_b = Z3_delta.dot(self.W3.T) * dsigmoid(input3)
                 # print(Z2_delta_b.shape)
@@ -108,7 +127,26 @@ class Net(object):
             accuracy = accuracy_score(y_val, predictions)
             loss = np.mean(self.cross_entropy_func(Y_pred, labels_bin_val))
             print('epoach：',n,'train_acc：%.4f'%np.mean(Acc) ,'train_loss:%.4f:'%np.mean(Loss),
-                  'test_acc：%.4f'%accuracy ,'test_loss:%.4f:'%np.mean(loss))
+                  'test_acc：%.4f'%accuracy ,'test_loss:%.4f'%np.mean(loss))
+            Loss_his[0].append(np.mean(Loss))
+            Loss_his[1].append( np.mean(loss))
+            Acc_his[0].append(np.mean(Acc))
+            Acc_his[1].append( accuracy)
+        plt.subplot(211)
+        labels = ['train', 'validate']
+        for i, l_his in enumerate(Acc_his):
+            plt.plot(l_his, label=labels[i])
+        plt.legend(loc='best')
+        plt.xlabel('epochs')
+        plt.ylabel('Acc')
+        plt.subplot(212)
+        for i, l_his in enumerate(Loss_his):
+            plt.plot(l_his, label=labels[i])
+        plt.legend(loc='best')
+        plt.xlabel('epochs')
+        plt.ylabel('Loss')
+        plt.show()
+
 
     def softmax(self,x):
         """ softmax function """
@@ -119,7 +157,7 @@ class Net(object):
         return out
 
     def cross_entropy_func(self,y_pred,y_gt):
-        return np.sum(y_pred*y_gt,axis=1)
+        return np.mean(np.sum((-y_gt*np.log(y_pred)-(1-y_gt)*np.log(1-y_pred)),axis=1))
 
 
     def predict(self,x):
@@ -133,9 +171,12 @@ class Net(object):
         L3, input3 = self.Linear_transform(L2, self.W3)
         return L3
 
+
+
 if __name__ =='__main__':
     train_dataset=Mnist(root=os.path.join('DataSet','MNIST','raw'))
     X = train_dataset.data
+    print(len(X))
     Y = train_dataset.targets
     #进行简单的数据统计
     # data_analyze(X,Y)
@@ -152,7 +193,7 @@ if __name__ =='__main__':
     labels_bin_val = LabelBinarizer().fit_transform(y_val)
 
     print('train......................')
-    nn.train(X_train,labels_bin_train,batch_size=BatchSize,epochs=20)
+    nn.train(X_train,labels_bin_train,batch_size=BatchSize,epochs=1000)
     print('test.......................')
     test_dataset=Mnist(root=os.path.join('DataSet','MNIST','raw'),train=False)
     X = test_dataset.data
