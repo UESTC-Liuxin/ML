@@ -7,7 +7,7 @@ from sklearn import preprocessing
 from sklearn.metrics import log_loss
 from sklearn.metrics import roc_curve,auc,precision_recall_curve,f1_score,confusion_matrix,accuracy_score
 from sklearn.model_selection import KFold,StratifiedKFold
-from DataSet.minist import Mnist
+from minist import Mnist
 
 LR=0.1
 BatchSize=1
@@ -138,7 +138,7 @@ if __name__ =='__main__':
     X = train_dataset.data
     Y = train_dataset.targets
     #进行简单的数据统计
-    # data_analyze(X,Y)
+    data_analyze(X,Y)
     #图像展开为全连接,reshape公用内存
     X_flatten=X.reshape(-1,28*28)
     #标准化
@@ -151,12 +151,13 @@ if __name__ =='__main__':
     labels_bin_train = LabelBinarizer().fit_transform(y_train)
     labels_bin_val = LabelBinarizer().fit_transform(y_val)
 
-    print('train......................')
-    nn.train(X_train,labels_bin_train,batch_size=BatchSize,epochs=20)
-    print('test.......................')
+    # print('train......................')
+    # nn.train(X_train,labels_bin_train,batch_size=BatchSize,epochs=20)
+    # print('test.......................')
     test_dataset=Mnist(root=os.path.join('DataSet','MNIST','raw'),train=False)
     X = test_dataset.data
     Y = test_dataset.targets
+    data_analyze(X,Y)
     #图像展开为全连接,reshape公用内存
     X_flatten=X.reshape(-1,28*28)
     #标准化
